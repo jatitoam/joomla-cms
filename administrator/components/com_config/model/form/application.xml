@@ -971,7 +971,9 @@
 			label="FIELD_RULES_LABEL"
 			translate_label="false"
 			validate="rules"
-			filter="rules">
+			filter="rules"
+			full_catalog="true"
+			load_js="true">
 			<action
 				name="core.login.site"
 				title="JACTION_LOGIN_SITE"

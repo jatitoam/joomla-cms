@@ -72,9 +72,25 @@ if (isset($this->item->attribs['show_urls_images_backend']) && $this->item->attr
 			Joomla.submitform(task, document.getElementById('item-form'));
 		}
 	}
+
+	function getAjaxPage(page){
+		jQuery.ajax({
+			url : "index.php?option=com_redshopb&task=acl.ajaxGetNewGroupsPage",
+			type : 'post',
+			data : {'page' : page},
+			dataType : 'html',
+			beforeSend: function(){
+				jQuery("#permissions")
+					.html('<div class="spinner pagination-centered"><?php echo JHtml::image('media/com_redshopb/images/ajax-loader.gif', '');?></div>');
+			}
+		}).done(function(data){
+			jQuery("#permissions").html(data);
+		});
+	}
 </script>
 
-<form action="<?php echo JRoute::_('index.php?option=com_content&layout=edit&id=' . (int) $this->item->id); ?>" method="post" name="adminForm" id="item-form" class="form-validate">
+<form action="<?php echo JRoute::_('index.php?option=com_content&layout=edit&id=' . (int) $this->item->id); ?>"
+	method="post" name="adminForm" id="item-form" class="form-validate">
 
 	<?php echo JLayoutHelper::render('joomla.edit.title_alias', $this); ?>
 
@@ -144,7 +160,13 @@ if (isset($this->item->attribs['show_urls_images_backend']) && $this->item->attr
 
 		<?php if ($this->canDo->get('core.admin')) : ?>
 			<?php echo JHtml::_('bootstrap.addTab', 'myTab', 'permissions', JText::_('COM_CONTENT_FIELDSET_RULES', true)); ?>
-				<?php echo $this->form->getInput('rules'); ?>
+				<?php
+					// Permissions tab gets generated
+					$field = $this->form->getField('rules');
+
+					// Print Field HTML code for permissions info
+					echo $field->input;
+				?>
 			<?php echo JHtml::_('bootstrap.endTab'); ?>
 		<?php endif; ?>
 

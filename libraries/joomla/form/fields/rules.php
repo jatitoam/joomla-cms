@@ -13,8 +13,10 @@ defined('JPATH_PLATFORM') or die;
  * Form Field class for the Joomla Platform.
  * Field for assigning permissions to groups for a given asset
  *
- * @see    JAccess
- * @since  11.1
+ * @package     Joomla.Platform
+ * @subpackage  Form
+ * @see         JAccess
+ * @since       11.1
  */
 class JFormFieldRules extends JFormField
 {
@@ -49,6 +51,37 @@ class JFormFieldRules extends JFormField
 	 * @since  3.2
 	 */
 	protected $assetField;
+
+	/**
+	 * @var    int  Current page of permissions (when using pagination)
+	 * @since  3.3
+	 */
+	protected $currentPage = 1;
+
+	/**
+	 * Constructor that allows to copy field parameter
+	 *
+	 * @param   object  $previousObject  Object from parent class
+	 *
+	 * @since  3.3
+	 *
+	 */
+	public function __construct($previousObject = null)
+	{
+		if (empty($previousObject))
+		{
+			parent::__construct();
+
+			return $this;
+		}
+
+		foreach (get_object_vars($previousObject) as $key => $value)
+		{
+			$this->$key = $value;
+		}
+
+		return $this;
+	}
 
 	/**
 	 * Method to get certain otherwise inaccessible properties from the form field object.
@@ -126,17 +159,59 @@ class JFormFieldRules extends JFormField
 	}
 
 	/**
+	 * Current page setter function.
+	 *
+	 * @param   int  $page  Page to set current page.
+	 *
+	 * @return null
+	 *
+	 * @since   3.3
+	 */
+	public function setCurrentPage($page)
+	{
+		$this->currentPage = $page;
+	}
+
+	/**
+	 * Setter value for loading javascript function for page change.
+	 *
+	 * @param   bool  $loadJs  Boolean value
+	 *
+	 * @return void
+	 */
+	public function loadJs($loadJs = true)
+	{
+		if ($loadJs)
+		{
+			$this->element['load_js'] = 'true';
+		}
+		else
+		{
+			$this->element['load_js'] = 'false';
+		}
+	}
+
+	/**
 	 * Method to get the field input markup for Access Control Lists.
 	 * Optionally can be associated with a specific component and section.
+	 * This method gets called when accessing $field->input;
 	 *
 	 * @return  string  The field input markup.
 	 *
 	 * @since   11.1
 	 * @todo:   Add access check.
 	 */
-	protected function getInput()
+	public function getInput()
 	{
+		// Prepare output
+		$html = array();
+
 		JHtml::_('bootstrap.tooltip');
+
+		// Pagination parameters
+		$jinput = JFactory::getApplication()->input;
+		$limit = $jinput->getInt('limit', 20);
+		$start = ($this->currentPage != 1) ? ($this->currentPage - 1) * $limit : $jinput->getInt('start', 0);
 
 		// Initialise some field attributes.
 		$section = $this->section;
@@ -175,16 +250,16 @@ class JFormFieldRules extends JFormField
 			$assetId = $this->form->getValue($assetField);
 		}
 
-		// Full width format.
-
 		// Get the rules for just this asset (non-recursive).
 		$assetRules = JAccess::getAssetRules($assetId);
 
 		// Get the available user groups.
-		$groups = $this->getUserGroups();
+		$groups = $this->getUserGroups(true, $start, $limit);
 
-		// Prepare output
-		$html = array();
+		if ($this->element['full_catalog'] == 'true')
+		{
+			$html[] = '<div id="permissions-catalog">';
+		}
 
 		// Description
 		$html[] = '<p class="rule-desc">' . JText::_('JLIB_RULES_SETTINGS_DESC') . '</p>';
@@ -195,12 +270,12 @@ class JFormFieldRules extends JFormField
 		// Building tab nav
 		$html[] = '<ul class="nav nav-tabs">';
 
-		foreach ($groups as $group)
+		foreach ($groups as $i => $group)
 		{
 			// Initial Active Tab
 			$active = "";
 
-			if ($group->value == 1)
+			if ($i == 0)
 			{
 				$active = "active";
 			}
@@ -217,12 +292,12 @@ class JFormFieldRules extends JFormField
 		$html[] = '<div class="tab-content">';
 
 		// Start a row for each user group.
-		foreach ($groups as $group)
+		foreach ($groups as $i => $group)
 		{
 			// Initial Active Pane
 			$active = "";
 
-			if ($group->value == 1)
+			if ($i == 0)
 			{
 				$active = " active";
 			}
@@ -252,6 +327,7 @@ class JFormFieldRules extends JFormField
 
 			$html[] = '</tr>';
 			$html[] = '</thead>';
+
 			$html[] = '<tbody>';
 
 			foreach ($actions as $action)
@@ -266,10 +342,9 @@ class JFormFieldRules extends JFormField
 
 				$html[] = '<td headers="settings-th' . $group->value . '">';
 
-				$html[] = '<select class="input-small" name="' . $this->name . '[' . $action->name . '][' . $group->value . ']" id="' . $this->id
-					. '_' . $action->name
-					. '_' . $group->value . '" title="'
-					. JText::sprintf('JLIB_RULES_SELECT_ALLOW_DENY_GROUP', JText::_($action->title), trim($group->text)) . '">';
+				$html[] = '<select class="' . $this->id . '_visible input-small " name="' . $this->name . '[' . $action->name . '][' . $group->value . ']"' .
+					' onchange="onValueChange(jQuery(this))" id="' . $this->id . '_' . str_replace('.', '_', $action->name) . '_' . $group->value . '"' .
+					' title="' . JText::sprintf('JLIB_RULES_SELECT_ALLOW_DENY_GROUP', JText::_($action->title), trim($group->text)) . '">';
 
 				$inheritedRule = JAccess::checkGroup($group->value, $action->name, $assetId);
 
@@ -366,6 +441,25 @@ class JFormFieldRules extends JFormField
 
 		$html[] = '</div></div>';
 
+		// Table footer, index
+		$groupCount = $this->getGroupsNumber();
+		$pageCount = (empty($limit) ? 1 : ceil((integer) $groupCount / (integer) $limit));
+
+		$html[] = '	<table style="width: 100%"><tfoot>';
+		$html[] = '	<tr>';
+		$html[] = '		<td colspan="4">';
+		$html[] = RLayoutHelper::render(
+			'pagination.ajax.links',
+			array(
+				'ajaxJS'        => 'getAjaxPage',
+				'numberOfPages' => $pageCount,
+				'currentPage'   => $this->currentPage
+			)
+		);
+		$html[] = '		</td>';
+		$html[] = '	</tr>';
+		$html[] = '	</tfoot></table>';
+
 		$html[] = '<div class="alert">';
 
 		if ($section == 'component' || $section == null)
@@ -379,17 +473,97 @@ class JFormFieldRules extends JFormField
 
 		$html[] = '</div>';
 
+		if ($this->element['full_catalog'] == 'true')
+		{
+			$html[] = '</div>';
+
+			if ($this->element['load_js'] == 'true')
+			{
+				$html[] = ' <div id="inputs"></div>';
+				$html[] = '<script type="text/javascript">';
+				$html[] = 'function getAjaxPage(page){
+						jQuery.ajax({
+							url : "index.php?option=com_config&task=config.getpage",
+							type : "post",
+							data : {"page" : page},
+							dataType : "html",
+							beforeSend: function(){
+								jQuery("#permissions-catalog").html("<div class=\'spinner pagination-centered\'>' .
+									str_replace('"', '\'', JHtml::image('media/jui/img/ajax-loader.gif', '')) .
+									'</div>");
+							}
+						}).fail(function(){
+							jQuery("#permissions-catalog").html("N/A");
+						}).done(function(data){
+							jQuery("#permissions-catalog").html(data);
+							jQuery("select.' . $this->id . '_visible").each(function(index) {
+								var id = jQuery(this).attr("id") + "_change";
+								var input = jQuery("input#" + id);
+
+								if (input.length > 0)
+								{
+									jQuery(this).val(input.val());
+								}
+							});
+							jQuery("select.' . $this->id . '_visible").chosen();
+						});
+					}';
+
+				$html[] = 'function onValueChange(element) {
+				var id = element.attr("id");
+				var input = jQuery("input#" + id + "_change");
+
+				if (input.length > 0)
+				{
+					input.val(element.val());
+				}
+				else
+				{
+					var inputs = jQuery("#inputs");
+					var parts = id.split("_");
+					id = id + "_change";
+					var name = parts[0] + "[change]" + "[";
+
+					for(i = 2; i < parts.length; i++)
+					{
+						if (i == parts.length - 1)
+						{
+							name = name + "][" + parts[i] + "]";
+						}
+						else if (i == parts.length - 2)
+						{
+							name = name + parts[i];
+						}
+						else
+						{
+							name = name + parts[i] + ".";
+						}
+					}
+
+					var value = element.val();
+					inputs.html(inputs.html() + "<input type=\"hidden\" name=\"" + name + "\" id=\"" + id + "\" value=\"" + value + "\"/>");
+				}
+			}';
+
+				$html[] = '</script>';
+			}
+		}
+
 		return implode("\n", $html);
 	}
 
 	/**
-	 * Get a list of the user groups.
+	 * Get a list of the user groups
+	 *
+	 * @param   bool  $paginate  Defines if pagination should be used
+	 * @param   int   $start     Start
+	 * @param   int   $limit     Limit
 	 *
 	 * @return  array
 	 *
 	 * @since   11.1
 	 */
-	protected function getUserGroups()
+	protected function getUserGroups($paginate = false, $start = 0, $limit = 0)
 	{
 		$db = JFactory::getDbo();
 		$query = $db->getQuery(true)
@@ -398,9 +572,39 @@ class JFormFieldRules extends JFormField
 			->join('LEFT', $db->quoteName('#__usergroups') . ' AS b ON a.lft > b.lft AND a.rgt < b.rgt')
 			->group('a.id, a.title, a.lft, a.rgt, a.parent_id')
 			->order('a.lft ASC');
-		$db->setQuery($query);
+
+		if ($paginate)
+		{
+			$db->setQuery($query, $start, $limit);
+		}
+		else
+		{
+			$db->setQuery($query);
+		}
+
 		$options = $db->loadObjectList();
 
 		return $options;
+	}
+
+	/**
+	 * Get groups number function.
+	 *
+	 * @return  int
+	 *
+	 * @since   3.3
+	 */
+	protected function getGroupsNumber()
+	{
+		// Get a database object.
+		$db = JFactory::getDBO();
+
+		$query = $db->getQuery(true);
+		$query->select('COUNT(id)');
+		$query->from('#__usergroups');
+		$db->setQuery($query);
+		$count = (int) $db->loadResult();
+
+		return $count;
 	}
 }

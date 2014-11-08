@@ -11,7 +11,9 @@ defined('_JEXEC') or die;
 /**
  * Save Controller for global configuration
  *
- * @since  3.2
+ * @package     Joomla.Administrator
+ * @subpackage  com_config
+ * @since       3.2
  */
 class ConfigControllerApplicationSave extends JControllerBase
 {
@@ -49,8 +51,38 @@ class ConfigControllerApplicationSave extends JControllerBase
 		// Set FTP credentials, if given.
 		JClientHelper::setCredentialsFromRequest('ftp');
 
-		$model = new ConfigModelApplication;
-		$data  = $this->input->post->get('jform', array(), 'array');
+		$model    = new ConfigModelApplication;
+		$data     = $this->input->post->get('jform', array(), 'array');
+		$option   = $this->input->get('component');
+
+		// Get the database connection object.
+		$db = JFactory::getDbo();
+
+		// Build the database query to get the rules for the asset.
+		$query = $db->getQuery(true)
+			->select('rules')
+			->from('#__assets ')
+			->where('id = 1');
+
+		// Execute the query and load the rules from the result.
+		$db->setQuery($query);
+		$aclRules = JArrayHelper::fromObject(json_decode($db->loadResult()));
+
+		// Update rules set
+		$change = $data['change'];
+
+		foreach ($change as $rule => $sets)
+		{
+			$ruleExists = false;
+
+			foreach ($sets as $id => $value)
+			{
+				$aclRules[$rule][$id] = $value;
+			}
+		}
+
+		$data['rules'] = $aclRules;
+		unset($data['change']);
 
 		// Complete data array if needed
 		$oldData = $model->getData();
@@ -71,15 +103,15 @@ class ConfigControllerApplicationSave extends JControllerBase
 		// Validate the posted data.
 		$return = $model->validate($form, $data);
 
-		// Save the data in the session.
-		$this->app->setUserState('com_config.config.global.data', $data);
-
 		// Check for validation errors.
 		if ($return === false)
 		{
 			/*
 			 * The validate method enqueued all messages for us, so we just need to redirect back.
 			 */
+
+			// Save the data in the session.
+			$this->app->setUserState('com_config.config.global.data', $data);
 
 			// Redirect back to the edit screen.
 			$this->app->redirect(JRoute::_('index.php?option=com_config&controller=config.display.application', false));

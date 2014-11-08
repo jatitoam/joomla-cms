@@ -23,6 +23,29 @@ JHtml::_('behavior.framework');
 	{
 		foreach ($displayData->form->getFieldset($fieldname) as $field)
 		{
+			$divId = '';
+			if (get_class($field) === 'JFormFieldFilters'):
+				$divId='id="filters"'
+		?>
+				<script type="text/javascript">
+					function getAjaxFiltersPage(page){
+						jQuery.ajax({
+							url : "index.php?option=com_config&task=config.getfilterspage",
+							type : 'post',
+							data : {'page' : page},
+							dataType : 'html',
+							beforeSend: function(){
+								jQuery("#filters").html('<div class="spinner pagination-centered"><?php echo JHtml::image('media/jui/img/ajax-loader.gif', '');?></div>');
+							}
+						}).fail(function(){
+							jQuery("#filters").html("N/A");
+						}).done(function(data){
+							jQuery("#filters").html(data);
+						});
+					}
+				</script>
+		<?php
+			endif;
 			$classnames = 'control-group';
 			$rel = '';
 			$showon = $displayData->form->getFieldAttribute($field->fieldname, 'showon');
@@ -41,7 +64,7 @@ JHtml::_('behavior.framework');
 			<?php if (!isset($displayData->showlabel) || $displayData->showlabel): ?>
 				<div class="control-label"><?php echo $field->label; ?></div>
 			<?php endif; ?>
-			<div class="controls"><?php echo $field->input; ?></div>
+			<div <?php echo $divId; ?> class="controls"><?php echo $field->input; ?></div>
 		</div>
 	<?php
 		}

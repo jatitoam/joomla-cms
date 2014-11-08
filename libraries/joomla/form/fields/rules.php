@@ -212,6 +212,9 @@ class JFormFieldRules extends JFormField
 		$jinput = JFactory::getApplication()->input;
 		$limit = $jinput->getInt('limit', 20);
 		$start = ($this->currentPage != 1) ? ($this->currentPage - 1) * $limit : $jinput->getInt('start', 0);
+		$groupCount = $this->getGroupsNumber();
+		$pageCount = (empty($limit) ? 1 : ceil((integer) $groupCount / (integer) $limit));
+		$pagination = new JPagination($groupCount, $start, $limit);
 
 		// Initialise some field attributes.
 		$section = $this->section;
@@ -441,21 +444,10 @@ class JFormFieldRules extends JFormField
 
 		$html[] = '</div></div>';
 
-		// Table footer, index
-		$groupCount = $this->getGroupsNumber();
-		$pageCount = (empty($limit) ? 1 : ceil((integer) $groupCount / (integer) $limit));
-
 		$html[] = '	<table style="width: 100%"><tfoot>';
 		$html[] = '	<tr>';
 		$html[] = '		<td colspan="4">';
-		$html[] = RLayoutHelper::render(
-			'pagination.ajax.links',
-			array(
-				'ajaxJS'        => 'getAjaxPage',
-				'numberOfPages' => $pageCount,
-				'currentPage'   => $this->currentPage
-			)
-		);
+		$html[] = $pagination->getListFooter();
 		$html[] = '		</td>';
 		$html[] = '	</tr>';
 		$html[] = '	</tfoot></table>';

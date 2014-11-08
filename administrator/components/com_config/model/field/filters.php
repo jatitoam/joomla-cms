@@ -63,6 +63,9 @@ class JFormFieldFilters extends JFormField
 		$start = ($this->currentPage != 1) ? ($this->currentPage - 1) * $limit : $jinput->getInt('start', 0);
 		$option = $jinput->getString('option', 'com_config');
 		$pageNumberLimit = 10;
+		$groupCount = $this->getGroupsNumber();
+		$pageCount = (empty($limit) ? 1 : ceil((integer) $groupCount / (integer) $limit));
+		$pagination = new JPagination($groupCount, $start, $limit);
 
 		// Get the available user groups.
 		$groups = $this->getUserGroups(true, $start, $limit);
@@ -92,21 +95,10 @@ class JFormFieldFilters extends JFormField
 		$html[] = '	</tr>';
 		$html[] = '	</thead>';
 
-		// Table footer, index
-		$groupCount = $this->getGroupsNumber();
-		$pageCount = (empty($limit) ? 1 : ceil((integer) $groupCount / (integer) $limit));
-
 		$html[] = '<tfoot>';
 		$html[] = '	<tr>';
 		$html[] = '		<td colspan="4">';
-		$html[] = RLayoutHelper::render(
-			'pagination.ajax.links',
-			array(
-				'ajaxJS'        => 'getAjaxFiltersPage',
-				'numberOfPages' => $pageCount,
-				'currentPage'   => $this->currentPage
-			)
-		);
+		$html[] = $pagination->getListFooter();
 		$html[] = '		</td>';
 		$html[] = '	</tr>';
 		$html[] = '	</tfoot>';

@@ -101,7 +101,7 @@ class InstallationModelLanguages extends JModelBase
 			 * In #__update_sites_extensions you should have this extension_id linked
 			 * to the Accredited Translations Repo.
 			 */
-			$updater->findUpdates(array($extId), 0);
+			echo 'Updates: ' . $updater->findUpdates(array($extId), 0);
 
 			$query = $db->getQuery(true);
 
@@ -115,13 +115,11 @@ class InstallationModelLanguages extends JModelBase
 
 			if (!$list || $list instanceof Exception)
 			{
-				echo 'Empty array after searching for updates';
 				$list = array();
 			}
 		}
 		else
 		{
-			echo 'Empty array because extId is null';
 			$list = array();
 		}
 

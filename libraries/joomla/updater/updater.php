@@ -118,6 +118,8 @@ class JUpdater extends JAdapter
 
 		$results = $this->getUpdateSites($eid);
 
+		var_dump($results);
+
 		if (empty($results))
 		{
 			return $retval;

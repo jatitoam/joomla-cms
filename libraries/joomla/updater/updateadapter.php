@@ -247,6 +247,8 @@ abstract class JUpdateAdapter extends JAdapterInstance
 		}
 		catch (RuntimeException $e)
 		{
+			echo 'Getting update exception: ' . $e->getMessage() . '<br />';
+
 			$response = null;
 		}
 

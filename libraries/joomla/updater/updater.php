@@ -150,8 +150,6 @@ class JUpdater extends JAdapter
 
 			$updateObjects = $this->getUpdateObjectsForSite($result, $minimum_stability, $includeCurrent);
 
-			var_dump($updateObjects);
-
 			if (!empty($updateObjects))
 			{
 				$retval = true;

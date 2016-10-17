@@ -250,6 +250,8 @@ abstract class JUpdateAdapter extends JAdapterInstance
 			$response = null;
 		}
 
+		echo 'Getting update, response: ' . $response . '<br />';
+
 		// Enable the update site. Since the get() returned the update site should remain enabled
 		$this->toggleUpdateSite($this->updateSiteId, true);
 

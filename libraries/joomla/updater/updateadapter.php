@@ -247,10 +247,10 @@ abstract class JUpdateAdapter extends JAdapterInstance
 		}
 		catch (RuntimeException $e)
 		{
+			echo 'Getting update exception: ' . $e->getMessage() . '<br />';
+
 			$response = null;
 		}
-
-		echo 'Getting update, response: ' . $response . '<br />';
 
 		// Enable the update site. Since the get() returned the update site should remain enabled
 		$this->toggleUpdateSite($this->updateSiteId, true);

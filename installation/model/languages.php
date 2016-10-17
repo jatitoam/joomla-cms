@@ -115,13 +115,13 @@ class InstallationModelLanguages extends JModelBase
 
 			if (!$list || $list instanceof Exception)
 			{
-				JFactory::getApplication()->enqueueMessage('Empty array after searching for updates')
+				echo 'Empty array after searching for updates';
 				$list = array();
 			}
 		}
 		else
 		{
-			JFactory::getApplication()->enqueueMessage('Empty array because extId is null')
+			echo 'Empty array because extId is null';
 			$list = array();
 		}
 
